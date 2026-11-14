@@ -1,29 +1,27 @@
 import os, json, sqlite3, datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import multiprocessing, io, ast, sys
+import io, ast, sys, threading
 
 # --- کدهای هسته امنیتی (درون خود فایل برای اطمینان) ---
-def worker(code, stdin_data, ret):
-    out = io.StringIO()
-    sys.stdout = sys.stderr = out
-    sys.stdin = io.StringIO(stdin_data)
-    try:
-        tree = ast.parse(code)
-        exec(compile(tree, "<code_user>", "exec"), {"__builtins__": __builtins__})
-        ret["OK"], ret["OUT"], ret["ERR"] = True, out.getvalue().strip(), ""
-    except Exception as e:
-        ret["OK"], ret["OUT"], ret["ERR"] = False, out.getvalue().strip(), str(e)
-
 def run_safe(code, stdin_data=""):
-    m = multiprocessing.Manager()
-    ret = m.dict()
-    p = multiprocessing.Process(target=worker, args=(code, stdin_data, ret))
-    p.start()
-    p.join(3.0)
-    if p.is_alive():
-        p.terminate()
+    out = io.StringIO()
+    state = {"ok": False, "err": ""}
+    def worker():
+        oi, oo, oe = sys.stdin, sys.stdout, sys.stderr
+        sys.stdin = io.StringIO(stdin_data)
+        sys.stdout = sys.stderr = out
+        try:
+            exec(compile(ast.parse(code), "<code_user>", "exec"), {"__builtins__": __builtins__})
+            state["ok"] = True
+        except Exception as e:
+            state["err"] = str(e)
+        finally:
+            sys.stdin, sys.stdout, sys.stderr = oi, oo, oe
+    t = threading.Thread(target=worker, daemon=True)
+    t.start(); t.join(3.0)
+    if t.is_alive():
         return {"OK": False, "OUT": "", "ERR": "زمان اجرا بیش از ۳ ثانیه شد."}
-    return dict(ret)
+    return {"OK": state["ok"], "OUT": out.getvalue().strip(), "ERR": state["err"]}
 
 from db import auth_user, get_conn
 
@@ -177,7 +175,7 @@ async function runCode() {
     const d = await res.json(); const o = document.getElementById("out"); o.classList.remove("hide");
     if(d.ok && d.out === currentLesson.expected) {
         o.style.color="var(--success)"; o.innerText="✅ درست بود! امتیاز گرفتی.";
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        window.confetti && confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         userData.xp = d.new_xp; userData.completed = d.new_completed;
         document.getElementById("display-xp").innerText = userData.xp + " XP";
     } else { o.style.color="#f87171"; o.innerText="❌ خطا یا خروجی اشتباه:\\n" + (d.err || d.out); }
