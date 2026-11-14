@@ -45,7 +45,7 @@ input, select{width:100%;padding:12px;margin-top:8px;border-radius:10px;border:1
 #hl { z-index:1; color:#f8fafc; pointer-events:none; }
 .kw { color: #f472b6; font-weight: bold; } .str { color: #fbbf24; }
 .item{display:flex;justify-content:space-between;align-items:center;padding:15px;cursor:pointer;border-bottom:1px solid #334155}
-.bottom-nav { position: fixed; bottom: 0; width: 100%; height: 65px; background: #0f172a; border-top: 1px solid #334155; display: flex; justify-content: space-around; align-items: center; }
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999; width: 100%; height: 65px; background: #0f172a; border-top: 1px solid #334155; display: flex; justify-content: space-around; align-items: center; }
 .nav-item { color: #94a3b8; font-size: 12px; text-align: center; cursor: pointer; }
 .nav-item.active { color: var(--prim); font-weight: bold; }
 .hide{display:none}
@@ -62,7 +62,7 @@ input, select{width:100%;padding:12px;margin-top:8px;border-radius:10px;border:1
 <div id="main-content" class="hide">
     <header class="card" style="display:flex;justify-content:space-between;align-items:center">
         <div><b id="display-user"></b> <br><small id="display-xp" style="color:var(--prim)"></small></div>
-        <button onclick="location.reload()" style="background:none;border:none;color:#ef4444">خروج</button>
+        <button onclick="confirmLogout()" style="background:#7f1d1d;border:none;color:#fff;padding:6px 12px;border-radius:8px;font-size:12px">خروج</button>
     </header>
     <div id="tab-lessons">
         <div id="cert-notif" class="card hide" style="background:linear-gradient(45deg, #10b981, #3b82f6); border:none; text-align:center">
@@ -110,6 +110,7 @@ input, select{width:100%;padding:12px;margin-top:8px;border-radius:10px;border:1
     <div class="card">
         <div class="editor-container"><div id="hl"></div><textarea id="ed" spellcheck="false" oninput="updateHl()" onscroll="sync()"></textarea></div>
         <button id="run-btn" class="btn" onclick="runCode()">▶ اجرا و بررسی</button>
+        <button class="btn" style="background:#10b981" onclick="shareCode()">📤 اشتراک‌گذاری کد</button>
         <div id="out" class="box hide"></div>
     </div>
 </div>
@@ -121,6 +122,13 @@ input, select{width:100%;padding:12px;margin-top:8px;border-radius:10px;border:1
 
 <script>
 let userData = null; let currentLesson = null;
+function confirmLogout() { if (confirm("از حساب خارج می‌شوی؟")) location.reload(); }
+function shareCode() {
+    const code = document.getElementById("ed").value;
+    if (navigator.share) { navigator.share({ title: "CodeLearn", text: code }).catch(()=>{}); }
+    else if (navigator.clipboard) { navigator.clipboard.writeText(code).then(()=>alert("کد کپی شد 📋")).catch(()=>alert("کپی نشد")); }
+    else { alert("اشتراک‌گذاری پشتیبانی نمی‌شود"); }
+}
 async function handleAuth(isReg) {
     const u = document.getElementById("user").value; const p = document.getElementById("pass").value;
     const res = await fetch("/api/auth", {method:"POST", body:JSON.stringify({u, p, isReg})});
